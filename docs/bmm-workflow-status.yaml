@@ -1,0 +1,111 @@
+# echo-bridge Workflow Status
+# BMad Method - Greenfield iOS Communication App
+# Generated: 2025-12-21
+
+generated: "2025-12-21T00:00:00Z"
+project: "echo-bridge"
+project_type: "iOS Communication App for Non-Verbal Users"
+selected_track: "bmad-method"
+field_type: "greenfield"
+workflow_path: "method-greenfield"
+
+workflow_status:
+  # Phase 0: Discovery (Optional)
+  phase_0_discovery:
+    status: "in_progress"
+    name: "Discovery"
+    optional: true
+    items:
+      - id: "product-brief"
+        name: "Product Brief"
+        agent: "analyst"
+        status: "pending"
+        note: "Strategic product planning - clarify scope, user scenarios, core value proposition"
+
+      - id: "brainstorm-project"
+        name: "Brainstorm"
+        agent: "analyst"
+        status: "skipped"
+        note: "Creative exploration (not selected)"
+
+      - id: "research"
+        name: "Research"
+        agent: "analyst"
+        status: "skipped"
+        note: "Technical/competitive analysis (not selected)"
+
+  # Phase 1: Planning (Required)
+  phase_1_planning:
+    status: "pending"
+    name: "Planning"
+    required: true
+    items:
+      - id: "prd"
+        name: "Product Requirements Document"
+        agent: "pm"
+        status: "pending"
+        output: "docs/prd/"
+        note: "Full PRD with functional and non-functional requirements"
+
+      - id: "create-ux-design"
+        name: "UX Design"
+        agent: "ux-designer"
+        status: "pending"
+        output: "docs/ux-design/"
+        note: "UI/UX design for iOS app - conditional on PRD findings"
+
+  # Phase 2: Solutioning (Required)
+  phase_2_solutioning:
+    status: "pending"
+    name: "Solutioning"
+    required: true
+    items:
+      - id: "create-architecture"
+        name: "Architecture"
+        agent: "architect"
+        status: "pending"
+        output: "docs/architecture/"
+        note: "Complete system architecture for gesture/sign recognition, NLP translation, conversation logging"
+
+      - id: "create-epics-and-stories"
+        name: "Epics & Stories"
+        agent: "pm"
+        status: "pending"
+        output: "docs/epics-and-stories/"
+        note: "Break down PRD + UX + Architecture into implementable epics and user stories"
+
+      - id: "test-design"
+        name: "Test Design"
+        agent: "tea"
+        status: "pending"
+        output: "docs/test-design/"
+        note: "System-level testability review"
+
+      - id: "validate-architecture"
+        name: "Validate Architecture"
+        agent: "architect"
+        status: "pending"
+        note: "Quality check for architecture completeness (optional)"
+
+      - id: "implementation-readiness"
+        name: "Implementation Readiness"
+        agent: "architect"
+        status: "pending"
+        note: "Final validation gate - PRD + Architecture + Epics + UX completeness check"
+
+  # Phase 3: Implementation (Tracked separately in sprint-status.yaml)
+  phase_3_implementation:
+    status: "pending"
+    name: "Implementation"
+    required: true
+    items:
+      - id: "sprint-planning"
+        name: "Sprint Planning"
+        agent: "sm"
+        status: "pending"
+        note: "Creates sprint plan - subsequent work tracked in sprint-status.yaml"
+
+# Quick Links
+next_workflow: "product-brief"
+next_agent: "analyst"
+next_command: "bmad:bmm:workflows:product-brief"
