@@ -20,7 +20,8 @@ final class DataService {
             Message.self,
             Phrase.self,
             HandProfile.self,
-            HandLandmark.self
+            HandLandmark.self,
+            KeyboardCalibration.self
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         
@@ -74,5 +75,27 @@ final class DataService {
     
     func save() throws {
         try context.save()
+    }
+
+    // MARK: - Keyboard Calibration
+
+    func fetchActiveCalibration() throws -> KeyboardCalibration? {
+        var descriptor = FetchDescriptor<KeyboardCalibration>(
+            predicate: #Predicate { $0.isActive }
+        )
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
+    }
+
+    func saveCalibration(_ calibration: KeyboardCalibration) {
+        // Deactivate existing calibrations
+        if let existing = try? fetchActiveCalibration() {
+            existing.isActive = false
+        }
+        context.insert(calibration)
+    }
+
+    func deleteCalibration(_ calibration: KeyboardCalibration) {
+        context.delete(calibration)
     }
 }

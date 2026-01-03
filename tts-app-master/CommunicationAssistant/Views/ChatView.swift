@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import AVFoundation
+import Vision
 
 struct ChatView: View {
     @Environment(\.modelContext) private var modelContext
@@ -13,6 +14,8 @@ struct ChatView: View {
     @State private var showingPhrases = false
     @State private var showingSettings = false
     @State private var showingTraining = false
+    @State private var showingKeyboardCalibration = false
+    @State private var showCameraPreview = false
     
     #if os(iOS)
     private let feedbackGenerator = UIImpactFeedbackGenerator(style: .light)
@@ -102,23 +105,76 @@ struct ChatView: View {
             Divider()
             
             // Camera Status & Controls
-            HStack {
+            VStack(spacing: 8) {
+                // Typing mode status
                 if visionService.isTypingActive {
-                    Label("Air Typing Active", systemImage: "hand.wave.fill")
-                        .font(.caption)
-                        .foregroundColor(.blue)
-                        .padding(4)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(4)
+                    KeyboardStatusBar(
+                        isCalibrated: visionService.keyboardMapper.isCalibrated,
+                        isActive: visionService.isTypingActive,
+                        lastTypedKey: visionService.lastTypedKey
+                    )
                 }
-                Spacer()
-                Button("Calibrate") {
-                    showingTraining = true
+
+                HStack {
+                    // Mode toggle
+                    Picker("Mode", selection: Binding(
+                        get: { visionService.typingMode },
+                        set: { visionService.setTypingMode($0) }
+                    )) {
+                        Text("Gesture").tag(TypingMode.gesture)
+                        Text("QWERTY").tag(TypingMode.qwerty)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 160)
+
+                    Spacer()
+
+                    // Camera preview toggle
+                    Button(action: { showCameraPreview.toggle() }) {
+                        Image(systemName: showCameraPreview ? "camera.fill" : "camera")
+                            .foregroundColor(showCameraPreview ? .blue : .secondary)
+                    }
+
+                    // Calibrate button (changes based on mode)
+                    Button(visionService.typingMode == .qwerty ? "Calibrate" : "Train") {
+                        if visionService.typingMode == .qwerty {
+                            showingKeyboardCalibration = true
+                        } else {
+                            showingTraining = true
+                        }
+                    }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
                 }
-                .font(.caption)
             }
             .padding(.horizontal)
             .padding(.top, 8)
+
+            // Camera preview with overlay (when enabled)
+            if showCameraPreview {
+                ZStack {
+                    CameraPreview(session: cameraManager.session)
+                        .frame(height: 200)
+                        .cornerRadius(12)
+
+                    // Hand landmark overlay
+                    HandLandmarkOverlay(observations: visionService.handObservations)
+                        .frame(height: 200)
+
+                    // QWERTY overlay when in QWERTY mode and calibrated
+                    if visionService.typingMode == .qwerty && visionService.keyboardMapper.isCalibrated {
+                        QwertyOverlay(
+                            keyboardMapper: visionService.keyboardMapper,
+                            activeKey: visionService.lastTypedKey,
+                            fingerPositions: extractFingerPositions()
+                        )
+                        .frame(height: 200)
+                    } else if visionService.typingMode == .qwerty {
+                        QwertyPlaceholderOverlay()
+                    }
+                }
+                .padding(.horizontal)
+            }
             
             HStack(alignment: .bottom, spacing: 12) {
                 Button(action: { showingPhrases = true }) {
@@ -182,6 +238,13 @@ struct ChatView: View {
         .sheet(isPresented: $showingTraining) {
             TrainingView(cameraManager: cameraManager, visionService: visionService)
         }
+        .sheet(isPresented: $showingKeyboardCalibration) {
+            KeyboardCalibrationView(
+                cameraManager: cameraManager,
+                visionService: visionService,
+                keyboardMapper: visionService.keyboardMapper
+            )
+        }
         .onAppear {
             let service = visionService
             cameraManager.start()
@@ -216,5 +279,21 @@ struct ChatView: View {
         .onChange(of: handProfiles) { oldValue, newValue in
             visionService.updateProfiles(newValue)
         }
+    }
+
+    // MARK: - Helpers
+
+    /// Extract fingertip positions for overlay rendering
+    private func extractFingerPositions() -> [CGPoint] {
+        var positions: [CGPoint] = []
+        for observation in visionService.handObservations {
+            for finger in GestureRecognizer.trackedFingers {
+                if let point = try? observation.recognizedPoint(finger),
+                   point.confidence > 0.5 {
+                    positions.append(point.location)
+                }
+            }
+        }
+        return positions
     }
 }

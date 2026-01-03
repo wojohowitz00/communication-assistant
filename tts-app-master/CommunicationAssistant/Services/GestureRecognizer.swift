@@ -6,14 +6,33 @@ final class GestureRecognizer: ObservableObject {
     @Published var isPalmDetected = false
     private var palmDetectionStartTime: Date?
     private let detectionThreshold: TimeInterval = 2.0
-    
-    // Keystroke detection state
+
+    // Keystroke detection state (legacy single-finger mode)
     private var lastWristPosition: CGPoint?
     private let tapThreshold: CGFloat = 0.05 // Normalized distance
     private var isTapGestureActive = false
-    
+
+    // Per-finger tap detection for QWERTY mode
+    private var lastFingerPositions: [FingerKey: CGPoint] = [:]
+    private var fingerTapStates: [FingerKey: Bool] = [:]
+    private let fingerTapThreshold: CGFloat = 0.04
+
+    // Finger identification
+    struct FingerKey: Hashable {
+        let hand: VNChirality
+        let finger: VNHumanHandPoseObservation.JointName
+    }
+
+    static let trackedFingers: [VNHumanHandPoseObservation.JointName] = [
+        .indexTip, .middleTip, .ringTip, .littleTip
+    ]
+
     var onActivationGestureDetected: (() -> Void)?
     var onKeystrokeDetected: (() -> Void)?
+
+    /// New callback for per-finger taps in QWERTY mode
+    /// Parameters: (hand chirality, finger joint, observation)
+    var onFingerTap: ((VNChirality, VNHumanHandPoseObservation.JointName, VNHumanHandPoseObservation) -> Void)?
     
     func process(observations: [VNHumanHandPoseObservation]) {
         guard let observation = observations.first else {
@@ -100,5 +119,61 @@ final class GestureRecognizer: ObservableObject {
     private func resetPalmDetection() {
         isPalmDetected = false
         palmDetectionStartTime = nil
+    }
+
+    // MARK: - QWERTY Mode Per-Finger Detection
+
+    /// Process observations for QWERTY mode with per-finger tap detection
+    func processForQwerty(observations: [VNHumanHandPoseObservation]) {
+        // Still check for activation gesture
+        if let observation = observations.first {
+            if isOpenPalm(observation) {
+                handlePalmDetected()
+            } else {
+                resetPalmDetection()
+            }
+        }
+
+        // Process each hand for per-finger taps
+        for observation in observations {
+            detectFingerTaps(observation: observation)
+        }
+    }
+
+    private func detectFingerTaps(observation: VNHumanHandPoseObservation) {
+        let chirality = observation.chirality
+
+        for finger in Self.trackedFingers {
+            guard let point = try? observation.recognizedPoint(finger),
+                  point.confidence > 0.6 else {
+                continue
+            }
+
+            let key = FingerKey(hand: chirality, finger: finger)
+            let currentPos = point.location
+
+            if let lastPos = lastFingerPositions[key] {
+                let dy = lastPos.y - currentPos.y // Downward motion = positive dy
+
+                let isCurrentlyTapping = fingerTapStates[key] ?? false
+
+                if dy > fingerTapThreshold && !isCurrentlyTapping {
+                    // Rapid downward movement detected - finger tap!
+                    fingerTapStates[key] = true
+                    onFingerTap?(chirality, finger, observation)
+                } else if dy < -fingerTapThreshold {
+                    // Finger moved back up - reset tap state
+                    fingerTapStates[key] = false
+                }
+            }
+
+            lastFingerPositions[key] = currentPos
+        }
+    }
+
+    /// Reset all finger tracking state
+    func resetFingerTracking() {
+        lastFingerPositions.removeAll()
+        fingerTapStates.removeAll()
     }
 }
