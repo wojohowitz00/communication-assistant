@@ -44,3 +44,6 @@ Package.resolved
 *.mp3
 *.wav
 *.mp4
+
+# Claude agent configs (can have iCloud sync issues)
+.claude/
