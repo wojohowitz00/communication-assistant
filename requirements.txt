@@ -1,0 +1,7 @@
+torch==2.6.0
+torchaudio==2.6.0
+chatterbox-tts
+flask>=2.0.0
+flask-cors>=3.0.0
+gradio>=5.0.0
+setuptools
